@@ -1,8 +1,5 @@
 const set = new Set();
 const globalProperties = [
-  'Infinity',
-  'NaN',
-  'undefined',
   'eval',
   'isFinite',
   'isNaN',
@@ -49,9 +46,7 @@ const globalProperties = [
   'Atomics',
   'JSON',
   'Math',
-  'Reflect',
-  'escape',
-  'unescape',
+  'Reflect'
 ]
 
 const queue = [];
@@ -68,7 +63,7 @@ let current;
 while (queue.length) {
   current = queue.shift();
   console.log(current.path.join('.'));
-  if (set.has(current.object) || current.object === undefined) {
+  if (set.has(current.object)) {
     continue;
   }
   set.add(current.object);
