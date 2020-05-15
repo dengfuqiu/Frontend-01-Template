@@ -50,24 +50,46 @@ const globalProperties = [
 ]
 
 const queue = [];
-const mountNodes = [];
+const nodes = [];
+
+const queuePushItem = (queue, path, object) => {
+  queue.push({
+    path,
+    object
+  });
+  modifyNodes(nodes, path);
+}
+
+const modifyNodes = (nodes, pathArr) => {
+  const copyPathArr = Array.from(pathArr);
+  let current = copyPathArr.shift();
+  let nodesIndex = nodes.findIndex(node => node.id === current);
+  if (copyPathArr.length === 0 && nodesIndex === -1) {
+    nodes.push({
+      id: current,
+      children: [],
+    });
+  } else {
+    modifyNodes(nodes[nodesIndex].children, copyPathArr);
+  }
+}
 
 for (const p of globalProperties) {
-  queue.push({
-    path: [p],
-    object: this[p]
-  });
+  queuePushItem(queue, [p], this[p]);
 }
 
 let current;
+let count = 0;
 
 while (queue.length) {
   current = queue.shift();
   if (set.has(current.object)) {
     continue;
   }
+
+  // console.log('current.path :>> ', current.path);
   set.add(current.object);
-  mountNodes.push(current.path);
+
   for (let p of Object.getOwnPropertyNames(current.object)) {
     const property = Object.getOwnPropertyDescriptor(current.object, p);
     if (
@@ -77,145 +99,21 @@ while (queue.length) {
       )
       && property.value instanceof Object
     ) {
-      queue.push({
-        path: current.path.concat([p]),
-        object: property.value
-      });
+      queuePushItem(queue, current.path.concat([`${count} value ${p}`]), property.value);
+      count++;
     }
     if (property.hasOwnProperty('get') && (typeof property.get === 'function')) {
-      queue.push({
-        path: current.path.concat([p]),
-        object: property.get
-      });
+      queuePushItem(queue, current.path.concat([`${count} get ${p}`]), property.get);
+      count++;
     }
     if (property.hasOwnProperty('set') && (typeof property.set === 'function')) {
-      queue.push({
-        path: current.path.concat([p]),
-        object: property.set
-      });
+      queuePushItem(queue, current.path.concat([`${count} get ${p}`]), property.set);
+      count++;
     }
   }
 }
-console.log('mountNodes :>> ', mountNodes);
-
-const nodes = {
-  id: 'realm',
-  children: [...mountNodes.filter(item => item.length === 1).map(item => ({ id: item[0] }))],
-}
-
-console.log('nodes :>> ', nodes);
-
-const data = {
-  "id": "Modeling Methods",
-  "children": [
-    {
-      "id": "Classification",
-      "children": [
-        {
-          "id": "Logistic regression"
-        },
-        {
-          "id": "Linear discriminant analysis"
-        },
-        {
-          "id": "Rules"
-        },
-        {
-          "id": "Decision trees"
-        },
-        {
-          "id": "Naive Bayes"
-        },
-        {
-          "id": "K nearest neighbor"
-        },
-        {
-          "id": "Probabilistic neural network"
-        },
-        {
-          "id": "Support vector machine"
-        }
-      ]
-    },
-    {
-      "id": "Consensus",
-      "children": [
-        {
-          "id": "Models diversity",
-          "children": [
-            {
-              "id": "Different initializations"
-            },
-            {
-              "id": "Different parameter choices"
-            },
-            {
-              "id": "Different architectures"
-            },
-            {
-              "id": "Different modeling methods"
-            },
-            {
-              "id": "Different training sets"
-            },
-            {
-              "id": "Different feature sets"
-            }
-          ]
-        },
-        {
-          "id": "Methods",
-          "children": [
-            {
-              "id": "Classifier selection"
-            },
-            {
-              "id": "Classifier fusion"
-            }
-          ]
-        },
-        {
-          "id": "Common",
-          "children": [
-            {
-              "id": "Bagging"
-            },
-            {
-              "id": "Boosting"
-            },
-            {
-              "id": "AdaBoost"
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "id": "Regression",
-      "children": [
-        {
-          "id": "Multiple linear regression"
-        },
-        {
-          "id": "Partial least squares"
-        },
-        {
-          "id": "Multi-layer feedforward neural network"
-        },
-        {
-          "id": "General regression neural network"
-        },
-        {
-          "id": "Support vector regression"
-        }
-      ]
-    }
-  ]
-}
 
 window.onload = () => {
-  console.log('document.body.clientWidth :>> ', document.body.clientWidth);
-  console.log('document.body.clientHeight :>> ', document.body.clientHeight);
   const graph = new G6.TreeGraph({
     container: 'container',
     width: document.body.clientWidth,
@@ -224,11 +122,11 @@ window.onload = () => {
       default: [
         {
           type: 'collapse-expand',
-          onChange: function onChange(item, collapsed) {
-            const data = item.get('model').data;
-            data.collapsed = collapsed;
-            return true;
-          },
+          // onChange: function onChange(item, collapsed) {
+          //   const data = item.get('model').data;
+          //   data.collapsed = collapsed;
+          //   return true;
+          // },
         },
         'drag-canvas',
         'zoom-canvas',
@@ -283,10 +181,12 @@ window.onload = () => {
   });
 
   // 读取数据
-  graph.data(nodes);
+  graph.data({
+    id: 'realm',
+    children: nodes,
+  });
   // 渲染图
   graph.render();
   graph.fitView();
-
 }
 
